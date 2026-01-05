@@ -1,0 +1,611 @@
+---
+import Layout from '../layouts/Layout.astro';
+import FieldCanvas from '../components/FieldCanvas.astro';
+import RosterPanel from '../components/RosterPanel.astro';
+---
+
+<Layout title="Tablero Táctico - Fútbol 8">
+	<main class="main-container">
+		<!-- Panel izquierdo: Roster -->
+		<aside id="roster-panel" class="side-panel left-panel">
+			<RosterPanel />
+		</aside>
+
+		<!-- Área principal: Campo -->
+		<section class="center-section">
+			<!-- Header -->
+			<header class="header">
+				<h1 class="title">Tablero Táctico</h1>
+				<div id="formation-name" class="formation-name">Nueva Formación</div>
+			</header>
+
+			<!-- Canvas del campo -->
+			<div class="field-wrapper">
+				<FieldCanvas />
+			</div>
+
+			<!-- Toolbar móvil -->
+			<nav id="mobile-toolbar" class="mobile-toolbar">
+				<button class="tool-btn mobile-btn" data-tool="select">Mover</button>
+				<button class="tool-btn mobile-btn" data-tool="arrow">Flecha</button>
+				<button class="tool-btn mobile-btn active" data-tool="clear">Limpiar</button>
+				<button class="tool-btn mobile-btn" id="toggle-roster-btn">Equipo</button>
+			</nav>
+		</section>
+
+		<!-- Panel derecho: Herramientas y Formaciones -->
+		<aside id="tools-panel" class="side-panel right-panel">
+			<h2 class="panel-title">Herramientas</h2>
+
+			<!-- Herramientas de dibujo -->
+			<div class="tools-grid">
+				<button class="tool-btn tool-box" data-tool="select" title="Seleccionar/Mover">
+					<svg class="tool-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+					</svg>
+					<span class="tool-label">Mover</span>
+				</button>
+				<button class="tool-btn tool-box" data-tool="arrow" title="Flecha">
+					<svg class="tool-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+					</svg>
+					<span class="tool-label">Flecha</span>
+				</button>
+				<button class="tool-btn tool-box" data-tool="dashed" title="Línea punteada">
+					<svg class="tool-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke-dasharray="4 2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+					</svg>
+					<span class="tool-label">Punteada</span>
+				</button>
+				<button class="tool-btn tool-box" data-tool="eraser" title="Borrar">
+					<svg class="tool-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+					</svg>
+					<span class="tool-label">Borrar</span>
+				</button>
+			</div>
+
+			<!-- Colores -->
+			<div class="colors-section">
+				<h3 class="section-subtitle">Color de dibujo</h3>
+				<div class="colors-row">
+					<button class="color-btn" style="background: #ef4444" data-color="#ef4444"></button>
+					<button class="color-btn" style="background: #eab308" data-color="#eab308"></button>
+					<button class="color-btn" style="background: #3b82f6" data-color="#3b82f6"></button>
+					<button class="color-btn" style="background: #ffffff" data-color="#ffffff"></button>
+				</div>
+			</div>
+
+			<!-- Separador -->
+			<hr class="divider" />
+
+			<!-- Formaciones -->
+			<h2 class="panel-title">Formaciones</h2>
+			<div class="formation-buttons">
+				<button id="save-formation" class="action-btn primary">Guardar</button>
+				<button id="new-formation" class="action-btn secondary">Nueva</button>
+			</div>
+			<div id="formations-list" class="formations-list">
+				<!-- Lista de formaciones guardadas -->
+			</div>
+		</aside>
+
+		<!-- Panel de roster móvil (overlay) -->
+		<div id="mobile-roster-overlay" class="mobile-roster-overlay hidden">
+			<div class="mobile-roster-panel">
+				<div class="mobile-roster-header">
+					<h2>Jugadores</h2>
+					<button id="close-roster-btn" class="close-btn">&times;</button>
+				</div>
+				<div id="mobile-roster-content">
+					<RosterPanel />
+				</div>
+			</div>
+		</div>
+	</main>
+</Layout>
+
+<style>
+	/* Layout principal - LIGHT MODE */
+	.main-container {
+		height: 100vh;
+		width: 100vw;
+		display: flex;
+		flex-direction: column;
+		background-color: #f1f5f9;
+		user-select: none;
+	}
+
+	@media (min-width: 1024px) {
+		.main-container {
+			flex-direction: row;
+		}
+	}
+
+	/* Paneles laterales */
+	.side-panel {
+		display: none;
+		flex-direction: column;
+		background-color: #ffffff;
+		padding: 20px;
+		overflow: auto;
+	}
+
+	@media (min-width: 1024px) {
+		.side-panel {
+			display: flex;
+			width: 300px;
+			flex-shrink: 0;
+			box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+		}
+
+		.left-panel {
+			border-right: 1px solid #e2e8f0;
+		}
+
+		.right-panel {
+			border-left: 1px solid #e2e8f0;
+		}
+	}
+
+	/* Sección central */
+	.center-section {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		padding: 12px;
+	}
+
+	@media (min-width: 1024px) {
+		.center-section {
+			padding: 20px;
+		}
+	}
+
+	/* Header */
+	.header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 12px;
+	}
+
+	.title {
+		color: #1e293b;
+		font-size: 22px;
+		font-weight: 800;
+	}
+
+	@media (min-width: 1024px) {
+		.title {
+			font-size: 28px;
+		}
+	}
+
+	.formation-name {
+		color: #64748b;
+		font-size: 14px;
+		font-weight: 600;
+		background: #f1f5f9;
+		padding: 6px 12px;
+		border-radius: 20px;
+	}
+
+	/* Campo */
+	.field-wrapper {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 0;
+		background: #ffffff;
+		border-radius: 16px;
+		padding: 12px;
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	}
+
+	/* Toolbar móvil */
+	.mobile-toolbar {
+		display: flex;
+		justify-content: center;
+		gap: 10px;
+		padding: 12px 0;
+	}
+
+	@media (min-width: 1024px) {
+		.mobile-toolbar {
+			display: none;
+		}
+	}
+
+	.mobile-btn {
+		background: #ffffff;
+		color: #1e293b;
+		border: 2px solid #e2e8f0;
+		border-radius: 12px;
+		padding: 10px 18px;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+		min-width: 44px;
+		min-height: 44px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	}
+
+	.mobile-btn.active {
+		background: linear-gradient(135deg, #e94560 0%, #d63651 100%);
+		color: white;
+		border-color: transparent;
+	}
+
+	/* Panel titles */
+	.panel-title {
+		color: #1e293b;
+		font-size: 16px;
+		font-weight: 800;
+		margin-bottom: 16px;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	/* Tools grid */
+	.tools-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
+		margin-bottom: 24px;
+	}
+
+	.tool-box {
+		background: #f8fafc;
+		color: #475569;
+		border: 2px solid #e2e8f0;
+		border-radius: 12px;
+		padding: 14px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.tool-box:hover {
+		background: #f1f5f9;
+		border-color: #cbd5e1;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	}
+
+	.tool-box.active {
+		background: linear-gradient(135deg, #e94560 0%, #d63651 100%);
+		color: white;
+		border-color: transparent;
+		box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+	}
+
+	.tool-icon {
+		width: 24px;
+		height: 24px;
+		margin: 0 auto;
+		display: block;
+	}
+
+	.tool-label {
+		font-size: 12px;
+		font-weight: 700;
+		margin-top: 6px;
+		display: block;
+		text-align: center;
+	}
+
+	/* Colors */
+	.colors-section {
+		margin-bottom: 24px;
+	}
+
+	.section-subtitle {
+		color: #64748b;
+		font-size: 12px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		margin-bottom: 10px;
+	}
+
+	.colors-row {
+		display: flex;
+		gap: 10px;
+	}
+
+	.color-btn {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		border: 3px solid #e2e8f0;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.color-btn:hover {
+		transform: scale(1.1);
+	}
+
+	.color-btn.active {
+		border-color: #1e293b;
+		box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.2);
+	}
+
+	/* Divider */
+	.divider {
+		border: none;
+		border-top: 2px solid #f1f5f9;
+		margin: 20px 0;
+	}
+
+	/* Formation buttons */
+	.formation-buttons {
+		display: flex;
+		gap: 10px;
+		margin-bottom: 16px;
+	}
+
+	.action-btn {
+		flex: 1;
+		padding: 12px 16px;
+		border: none;
+		border-radius: 12px;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+		min-height: 44px;
+		transition: all 0.2s ease;
+	}
+
+	.action-btn.primary {
+		background: linear-gradient(135deg, #e94560 0%, #d63651 100%);
+		color: white;
+		box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+	}
+
+	.action-btn.primary:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 16px rgba(233, 69, 96, 0.4);
+	}
+
+	.action-btn.secondary {
+		background: #f8fafc;
+		color: #475569;
+		border: 2px solid #e2e8f0;
+	}
+
+	.action-btn.secondary:hover {
+		background: #f1f5f9;
+		border-color: #cbd5e1;
+	}
+
+	/* Formations list */
+	.formations-list {
+		flex: 1;
+		overflow: auto;
+	}
+
+	/* Mobile roster overlay */
+	.mobile-roster-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.4);
+		z-index: 100;
+		display: flex;
+		align-items: flex-end;
+		backdrop-filter: blur(4px);
+	}
+
+	.mobile-roster-overlay.hidden {
+		display: none;
+	}
+
+	.mobile-roster-panel {
+		width: 100%;
+		max-height: 75vh;
+		background: #ffffff;
+		border-radius: 24px 24px 0 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+	}
+
+	.mobile-roster-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20px;
+		border-bottom: 1px solid #e2e8f0;
+	}
+
+	.mobile-roster-header h2 {
+		color: #1e293b;
+		font-size: 20px;
+		font-weight: 800;
+		margin: 0;
+	}
+
+	.close-btn {
+		background: #f1f5f9;
+		border: none;
+		color: #64748b;
+		font-size: 24px;
+		cursor: pointer;
+		padding: 4px 12px;
+		border-radius: 8px;
+		line-height: 1;
+	}
+
+	.close-btn:hover {
+		background: #e2e8f0;
+		color: #1e293b;
+	}
+
+	#mobile-roster-content {
+		flex: 1;
+		overflow: auto;
+		padding: 20px;
+	}
+
+	@media (min-width: 1024px) {
+		.mobile-roster-overlay {
+			display: none !important;
+		}
+	}
+</style>
+
+<script>
+	import { state } from '../scripts/state';
+	import { storage } from '../scripts/storage';
+
+	document.addEventListener('DOMContentLoaded', () => {
+		// Cargar formaciones guardadas
+		const savedFormations = storage.getFormations();
+		state.setSavedFormations(savedFormations);
+		updateFormationsList();
+
+		// Toggle roster en móvil
+		const toggleRosterBtn = document.getElementById('toggle-roster-btn');
+		const closeRosterBtn = document.getElementById('close-roster-btn');
+		const rosterOverlay = document.getElementById('mobile-roster-overlay');
+
+		toggleRosterBtn?.addEventListener('click', () => {
+			rosterOverlay?.classList.remove('hidden');
+		});
+
+		closeRosterBtn?.addEventListener('click', () => {
+			rosterOverlay?.classList.add('hidden');
+		});
+
+		rosterOverlay?.addEventListener('click', (e) => {
+			if (e.target === rosterOverlay) {
+				rosterOverlay.classList.add('hidden');
+			}
+		});
+
+		// Selección de herramientas
+		const toolBtns = document.querySelectorAll('.tool-btn');
+		toolBtns.forEach(btn => {
+			btn.addEventListener('click', () => {
+				const tool = btn.getAttribute('data-tool');
+				if (!tool) return;
+
+				if (tool === 'clear') {
+					window.dispatchEvent(new CustomEvent('clear-drawings'));
+					return;
+				}
+
+				// Actualizar estado visual
+				toolBtns.forEach(b => {
+					b.classList.remove('active');
+					b.classList.remove('bg-[#e94560]');
+				});
+				btn.classList.add('active');
+				window.dispatchEvent(new CustomEvent('tool-change', { detail: { tool } }));
+			});
+		});
+
+		// Selección de colores
+		const colorBtns = document.querySelectorAll('.color-btn');
+		colorBtns.forEach(btn => {
+			btn.addEventListener('click', () => {
+				const color = btn.getAttribute('data-color');
+				colorBtns.forEach(b => b.classList.remove('active'));
+				btn.classList.add('active');
+				window.dispatchEvent(new CustomEvent('color-change', { detail: { color } }));
+			});
+		});
+
+		// Activar primer color por defecto
+		colorBtns[0]?.classList.add('active');
+
+		// Guardar formación
+		document.getElementById('save-formation')?.addEventListener('click', () => {
+			const currentFormation = state.get().currentFormation;
+			const name = prompt('Nombre de la formación:', currentFormation.name);
+			if (name) {
+				state.setFormationName(name);
+				storage.saveFormation(state.get().currentFormation);
+				state.setSavedFormations(storage.getFormations());
+				updateFormationsList();
+				updateFormationName();
+			}
+		});
+
+		// Nueva formación
+		document.getElementById('new-formation')?.addEventListener('click', () => {
+			if (confirm('¿Crear nueva formación? Los cambios no guardados se perderán.')) {
+				state.newFormation();
+				updateFormationName();
+			}
+		});
+
+		// Suscribirse a cambios de estado
+		state.subscribe(() => {
+			updateFormationName();
+		});
+
+		function updateFormationName() {
+			const nameEl = document.getElementById('formation-name');
+			if (nameEl) {
+				nameEl.textContent = state.get().currentFormation.name;
+			}
+		}
+
+		function updateFormationsList() {
+			const listEl = document.getElementById('formations-list');
+			if (!listEl) return;
+
+			const formations = storage.getFormations();
+
+			if (formations.length === 0) {
+				listEl.innerHTML = '<p style="color: #94a3b8; font-size: 14px; text-align: center; padding: 16px 0;">No hay formaciones guardadas</p>';
+				return;
+			}
+
+			listEl.innerHTML = formations.map(f => `
+				<div style="display: flex; align-items: center; justify-content: space-between; background: #f1f5f9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; transition: all 0.2s;">
+					<button class="load-formation" data-id="${f.id}" style="flex: 1; text-align: left; color: #1e293b; font-size: 14px; font-weight: 600; background: none; border: none; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+						${f.name}
+					</button>
+					<button class="delete-formation" data-id="${f.id}" style="color: #94a3b8; background: none; border: none; cursor: pointer; padding: 4px; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.color='#ef4444'; this.style.background='#fef2f2'" onmouseout="this.style.color='#94a3b8'; this.style.background='none'">
+						<svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+						</svg>
+					</button>
+				</div>
+			`).join('');
+
+			// Event listeners para cargar formaciones
+			listEl.querySelectorAll('.load-formation').forEach(btn => {
+				btn.addEventListener('click', () => {
+					const id = btn.getAttribute('data-id');
+					const formation = formations.find(f => f.id === id);
+					if (formation) {
+						state.loadFormation(formation);
+					}
+				});
+			});
+
+			// Event listeners para eliminar formaciones
+			listEl.querySelectorAll('.delete-formation').forEach(btn => {
+				btn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const id = btn.getAttribute('data-id');
+					if (id && confirm('¿Eliminar esta formación?')) {
+						storage.deleteFormation(id);
+						state.setSavedFormations(storage.getFormations());
+						updateFormationsList();
+					}
+				});
+			});
+		}
+	});
+</script>

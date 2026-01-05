@@ -1,0 +1,341 @@
+---
+/**
+ * Componente del canvas del campo de fútbol
+ * Usa dos capas: fondo (campo estático) + interacción (jugadores y dibujos)
+ */
+---
+
+<div id="field-container" class="field-container">
+  <canvas id="bg-canvas" class="canvas-layer"></canvas>
+  <canvas id="interaction-canvas" class="canvas-layer"></canvas>
+</div>
+
+<style>
+  .field-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    max-height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 2px solid #e2e8f0;
+  }
+
+  .canvas-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #interaction-canvas {
+    touch-action: none;
+    cursor: grab;
+  }
+
+  #interaction-canvas:active {
+    cursor: grabbing;
+  }
+</style>
+
+<script>
+  import { FieldRenderer } from '../scripts/field-renderer';
+  import { PlayerManager } from '../scripts/player-manager';
+  import { TouchHandler } from '../scripts/touch-handler';
+  import { state } from '../scripts/state';
+  import type { Position, DrawingElement } from '../scripts/types';
+
+  function initCanvas() {
+    const container = document.getElementById('field-container');
+    const bgCanvas = document.getElementById('bg-canvas') as HTMLCanvasElement;
+    const interactionCanvas = document.getElementById('interaction-canvas') as HTMLCanvasElement;
+
+    if (!container || !bgCanvas || !interactionCanvas) return;
+
+    const fieldContainer = container as HTMLElement;
+    const fieldRenderer = new FieldRenderer(bgCanvas);
+    const playerManager = new PlayerManager(interactionCanvas);
+
+    let currentWidth = 0;
+    let currentHeight = 0;
+    let draggedPlayerId: string | null = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    // Estado de dibujo
+    let currentDrawingPoints: Position[] = [];
+
+    function resize() {
+      const rect = fieldContainer.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      currentWidth = rect.width;
+      currentHeight = rect.height;
+
+      // Ajustar tamaño del canvas para alta resolución
+      bgCanvas.width = rect.width * dpr;
+      bgCanvas.height = rect.height * dpr;
+      interactionCanvas.width = rect.width * dpr;
+      interactionCanvas.height = rect.height * dpr;
+
+      // Escalar contexto para compensar DPR
+      const bgCtx = bgCanvas.getContext('2d');
+      const interCtx = interactionCanvas.getContext('2d');
+      if (bgCtx) bgCtx.scale(dpr, dpr);
+      if (interCtx) interCtx.scale(dpr, dpr);
+
+      // Actualizar dimensiones en player manager
+      playerManager.setDimensions(rect.width, rect.height);
+
+      // Renderizar
+      fieldRenderer.render(rect.width, rect.height);
+      renderInteractionLayer();
+    }
+
+    function renderInteractionLayer() {
+      const ctx = interactionCanvas.getContext('2d');
+      if (!ctx) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, interactionCanvas.width, interactionCanvas.height);
+      ctx.scale(dpr, dpr);
+
+      // Dibujar dibujos guardados
+      drawAllDrawings(ctx);
+
+      // Dibujar dibujo actual (preview)
+      if (currentDrawingPoints.length > 1) {
+        drawPath(ctx, currentDrawingPoints, state.get().drawColor, state.get().selectedTool === 'dashed');
+      }
+
+      // Dibujar jugadores
+      playerManager.render();
+    }
+
+    function drawAllDrawings(ctx: CanvasRenderingContext2D) {
+      const currentState = state.get();
+      for (const drawing of currentState.currentFormation.drawings) {
+        const isDashed = drawing.type === 'dashed';
+        drawPath(ctx, drawing.points, drawing.color, isDashed);
+      }
+    }
+
+    function drawPath(ctx: CanvasRenderingContext2D, points: Position[], color: string, dashed: boolean) {
+      if (points.length < 2) return;
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (dashed) {
+        ctx.setLineDash([10, 5]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
+      ctx.beginPath();
+      const first = percentToPixel(points[0]);
+      ctx.moveTo(first.x, first.y);
+
+      for (let i = 1; i < points.length; i++) {
+        const point = percentToPixel(points[i]);
+        ctx.lineTo(point.x, point.y);
+      }
+      ctx.stroke();
+
+      // Dibujar punta de flecha
+      if (points.length >= 2) {
+        const last = percentToPixel(points[points.length - 1]);
+        const prev = percentToPixel(points[points.length - 2]);
+        drawArrowHead(ctx, prev, last, color);
+      }
+
+      ctx.setLineDash([]);
+    }
+
+    function drawArrowHead(ctx: CanvasRenderingContext2D, from: {x: number, y: number}, to: {x: number, y: number}, color: string) {
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const headLength = 12;
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(
+        to.x - headLength * Math.cos(angle - Math.PI / 6),
+        to.y - headLength * Math.sin(angle - Math.PI / 6)
+      );
+      ctx.lineTo(
+        to.x - headLength * Math.cos(angle + Math.PI / 6),
+        to.y - headLength * Math.sin(angle + Math.PI / 6)
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function percentToPixel(pos: Position): { x: number; y: number } {
+      return {
+        x: (pos.x / 100) * currentWidth,
+        y: (pos.y / 100) * currentHeight,
+      };
+    }
+
+    function pixelToPercent(x: number, y: number): Position {
+      return {
+        x: (x / currentWidth) * 100,
+        y: (y / currentHeight) * 100,
+      };
+    }
+
+    // Manejador de interacciones
+    const touchHandler = new TouchHandler(interactionCanvas, {
+      onStart: (data) => {
+        const currentState = state.get();
+        const tool = currentState.selectedTool;
+
+        if (tool === 'select') {
+          // Intentar seleccionar/arrastrar un jugador
+          const player = playerManager.hitTest(data.x, data.y);
+          if (player) {
+            draggedPlayerId = player.id;
+            const playerPixel = percentToPixel(player.position);
+            dragOffset = {
+              x: data.x - playerPixel.x,
+              y: data.y - playerPixel.y,
+            };
+            state.selectPlayer(player.id);
+            interactionCanvas.style.cursor = 'grabbing';
+          } else {
+            state.selectPlayer(null);
+          }
+        } else if (tool === 'arrow' || tool === 'dashed' || tool === 'curved') {
+          // Iniciar dibujo
+          currentDrawingPoints = [pixelToPercent(data.x, data.y)];
+          state.setIsDrawing(true);
+        } else if (tool === 'eraser') {
+          // Buscar y eliminar dibujo cercano
+          // Por ahora, solo limpiar todo al hacer clic
+          const formations = state.get().currentFormation.drawings;
+          // Implementar lógica de borrado individual si se necesita
+        }
+
+        renderInteractionLayer();
+      },
+
+      onMove: (data) => {
+        const currentState = state.get();
+        const tool = currentState.selectedTool;
+
+        if (tool === 'select' && draggedPlayerId) {
+          // Arrastrar jugador
+          const newPos = pixelToPercent(
+            data.x - dragOffset.x,
+            data.y - dragOffset.y
+          );
+          // Limitar a los bordes del campo
+          newPos.x = Math.max(3, Math.min(97, newPos.x));
+          newPos.y = Math.max(5, Math.min(95, newPos.y));
+
+          state.updatePlayerPosition(draggedPlayerId, newPos);
+        } else if ((tool === 'arrow' || tool === 'dashed' || tool === 'curved') && currentDrawingPoints.length > 0) {
+          // Continuar dibujo
+          currentDrawingPoints.push(pixelToPercent(data.x, data.y));
+        }
+
+        renderInteractionLayer();
+      },
+
+      onEnd: (data) => {
+        const currentState = state.get();
+        const tool = currentState.selectedTool;
+
+        if (tool === 'select') {
+          draggedPlayerId = null;
+          interactionCanvas.style.cursor = 'grab';
+        } else if ((tool === 'arrow' || tool === 'dashed' || tool === 'curved') && currentDrawingPoints.length > 1) {
+          // Guardar dibujo
+          const simplified = simplifyPath(currentDrawingPoints);
+          if (simplified.length >= 2) {
+            const newDrawing: DrawingElement = {
+              id: Math.random().toString(36).substring(2, 11),
+              type: tool === 'dashed' ? 'dashed' : 'arrow',
+              points: simplified,
+              color: currentState.drawColor,
+              thickness: 3,
+            };
+            state.addDrawing(newDrawing);
+          }
+          currentDrawingPoints = [];
+          state.setIsDrawing(false);
+        }
+
+        renderInteractionLayer();
+      },
+    });
+
+    // Simplificar path para reducir puntos
+    function simplifyPath(points: Position[]): Position[] {
+      if (points.length <= 3) return points;
+
+      const result: Position[] = [points[0]];
+      const tolerance = 1; // porcentaje
+
+      for (let i = 1; i < points.length - 1; i++) {
+        const prev = result[result.length - 1];
+        const curr = points[i];
+        const dist = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+
+        if (dist > tolerance) {
+          result.push(curr);
+        }
+      }
+
+      result.push(points[points.length - 1]);
+      return result;
+    }
+
+    // Observer para cambios de tamaño
+    const resizeObserver = new ResizeObserver(() => {
+      resize();
+    });
+    resizeObserver.observe(fieldContainer);
+
+    // Suscribirse a cambios de estado
+    state.subscribe(() => {
+      playerManager.setPlayers(state.get().currentFormation.players);
+      playerManager.setSelectedId(state.get().selectedPlayerId);
+      renderInteractionLayer();
+    });
+
+    // Escuchar eventos de herramientas
+    window.addEventListener('tool-change', ((e: CustomEvent) => {
+      state.setTool(e.detail.tool);
+      if (e.detail.tool === 'select') {
+        interactionCanvas.style.cursor = 'grab';
+      } else {
+        interactionCanvas.style.cursor = 'crosshair';
+      }
+    }) as EventListener);
+
+    window.addEventListener('color-change', ((e: CustomEvent) => {
+      state.setDrawColor(e.detail.color);
+    }) as EventListener);
+
+    window.addEventListener('clear-drawings', () => {
+      state.clearDrawings();
+    });
+
+    // Inicialización
+    playerManager.setPlayers(state.get().currentFormation.players);
+    resize();
+  }
+
+  // Inicializar cuando el DOM esté listo
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCanvas);
+  } else {
+    initCanvas();
+  }
+</script>

@@ -1,0 +1,231 @@
+---
+/**
+ * Panel de gestión de jugadores
+ * Permite editar nombres, números, posiciones y colores
+ */
+---
+
+<div class="roster-panel-wrapper flex flex-col h-full">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-slate-800 text-lg font-extrabold m-0">Jugadores</h2>
+    <button class="add-player-btn flex items-center gap-1 bg-gradient-to-br from-rose-500 to-rose-600 text-white px-3.5 py-2 text-sm font-bold rounded-xl shadow-md hover:from-rose-400 hover:to-rose-500 hover:-translate-y-0.5 transition-all cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+      </svg>
+      Añadir
+    </button>
+  </div>
+
+  <div class="players-list flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1">
+    <!-- Se llena dinámicamente -->
+  </div>
+</div>
+
+<script>
+  import { state } from '../scripts/state';
+  import type { PlayerRole } from '../scripts/types';
+
+  // Función auxiliar para ajustar color (fuera del forEach)
+  function adjustColor(hex: string, amount: number): string {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+  }
+
+  function initRosterPanel() {
+    // Inicializar TODAS las instancias del panel (desktop + mobile)
+    const wrappers = document.querySelectorAll('.roster-panel-wrapper');
+
+    wrappers.forEach((wrapper) => {
+      const list = wrapper.querySelector('.players-list') as HTMLElement | null;
+      const addPlayerBtn = wrapper.querySelector('.add-player-btn') as HTMLElement | null;
+
+      if (!list || !addPlayerBtn) return;
+
+      function renderPlayersList() {
+        const players = state.get().currentFormation.players;
+        const selectedId = state.get().selectedPlayerId;
+
+        if (players.length === 0) {
+          list!.innerHTML = `
+            <div class="text-center text-slate-400 py-8 px-4 text-sm">
+              <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              <p>No hay jugadores.<br>Añade jugadores para comenzar.</p>
+            </div>
+          `;
+          return;
+        }
+
+        list!.innerHTML = players.map((player) => `
+          <div class="player-card bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-3.5 transition-all duration-200 border-l-4 ${player.id === selectedId ? 'border-l-rose-500 from-rose-50 to-rose-100/50 shadow-md' : 'border-l-transparent hover:-translate-y-0.5 hover:shadow-lg'}" data-player-id="${player.id}">
+
+            <!-- Fila superior: Badge + Nombre + Color -->
+            <div class="flex items-center gap-3 mb-2.5">
+              <div class="relative w-12 h-12 shrink-0">
+                <!-- Sombra externa -->
+                <div class="absolute inset-0 rounded-full blur-sm opacity-40" style="background: ${player.color}; transform: translateY(2px);"></div>
+                <!-- Badge principal -->
+                <div class="relative w-full h-full rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner" style="background: linear-gradient(145deg, ${adjustColor(player.color, 30)} 0%, ${player.color} 50%, ${adjustColor(player.color, -30)} 100%);">
+                  <!-- Brillo superior -->
+                  <div class="absolute top-1 left-1/2 -translate-x-1/2 w-6 h-2 rounded-full bg-white/30 blur-[2px]"></div>
+                  <!-- Número -->
+                  <span class="relative z-10 drop-shadow-sm">${player.number}</span>
+                </div>
+              </div>
+              <input
+                type="text"
+                value="${player.name}"
+                data-field="name"
+                placeholder="Nombre del jugador"
+                class="flex-1 min-w-0 bg-transparent border-0 border-b-2 border-transparent hover:border-slate-200 focus:border-rose-500 focus:outline-none rounded-none text-slate-800 py-1.5 text-base font-bold placeholder:text-slate-400 placeholder:font-medium"
+              />
+              <input
+                type="color"
+                value="${player.color}"
+                data-field="color"
+                title="Color del jugador"
+                class="w-8 h-8 rounded-lg cursor-pointer p-0 border-0 shadow hover:scale-110 transition-transform"
+              />
+            </div>
+
+            <!-- Fila inferior: Número + Rol + Acciones -->
+            <div class="flex items-center gap-2">
+              <input
+                type="number"
+                value="${player.number}"
+                min="1"
+                max="99"
+                data-field="number"
+                title="Número"
+                class="w-12 text-center py-1.5 px-1 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 focus:outline-none"
+              />
+              <select data-field="role" class="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg text-slate-600 py-1.5 px-2.5 pr-7 text-xs font-semibold cursor-pointer focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 focus:outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]">
+                <option value="GK" ${player.role === 'GK' ? 'selected' : ''}>Portero</option>
+                <option value="DEF" ${player.role === 'DEF' ? 'selected' : ''}>Defensa</option>
+                <option value="MID" ${player.role === 'MID' ? 'selected' : ''}>Medio</option>
+                <option value="FWD" ${player.role === 'FWD' ? 'selected' : ''}>Delantero</option>
+                <option value="SUB" ${player.role === 'SUB' ? 'selected' : ''}>Suplente</option>
+              </select>
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  class="text-[10px] py-1 px-2 font-bold tracking-wide rounded-md cursor-pointer transition-all uppercase ${player.isOnField ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-500'}"
+                  data-action="toggle-field"
+                  title="${player.isOnField ? 'Sacar del campo' : 'Poner en campo'}"
+                >
+                  ${player.isOnField ? '✓ Campo' : 'Banca'}
+                </button>
+                <button class="text-slate-300 hover:text-rose-500 hover:bg-rose-500/10 p-1 rounded-md cursor-pointer transition-all" data-action="delete" title="Eliminar jugador">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        // Agregar event listeners
+        attachEventListeners();
+      }
+
+      function attachEventListeners() {
+        list!.querySelectorAll('.player-card').forEach(card => {
+          const playerId = card.getAttribute('data-player-id');
+          if (!playerId) return;
+
+          // Seleccionar jugador al hacer clic en la tarjeta
+          card.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'BUTTON' || target.closest('button')) {
+              return;
+            }
+            state.selectPlayer(playerId);
+          });
+
+          // Input de nombre
+          const nameInput = card.querySelector('input[data-field="name"]') as HTMLInputElement;
+          nameInput?.addEventListener('change', () => {
+            state.updatePlayer(playerId, { name: nameInput.value });
+          });
+
+          // Input de número
+          const numberInput = card.querySelector('input[data-field="number"]') as HTMLInputElement;
+          numberInput?.addEventListener('change', () => {
+            const value = parseInt(numberInput.value) || 1;
+            state.updatePlayer(playerId, { number: Math.max(1, Math.min(99, value)) });
+          });
+
+          // Input de color
+          const colorInput = card.querySelector('input[data-field="color"]') as HTMLInputElement;
+          colorInput?.addEventListener('input', () => {
+            state.updatePlayer(playerId, { color: colorInput.value });
+          });
+
+          // Select de posición
+          const roleSelect = card.querySelector('select[data-field="role"]') as HTMLSelectElement;
+          roleSelect?.addEventListener('change', () => {
+            state.updatePlayer(playerId, { role: roleSelect.value as PlayerRole });
+          });
+
+          // Botón toggle campo
+          card.querySelector('[data-action="toggle-field"]')?.addEventListener('click', () => {
+            const player = state.get().currentFormation.players.find(p => p.id === playerId);
+            if (player) {
+              state.updatePlayer(playerId, { isOnField: !player.isOnField });
+            }
+          });
+
+          // Botón eliminar
+          card.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
+            if (confirm('¿Eliminar este jugador?')) {
+              state.removePlayer(playerId);
+            }
+          });
+        });
+      }
+
+      // Añadir jugador
+      addPlayerBtn.addEventListener('click', () => {
+        const players = state.get().currentFormation.players;
+        const maxNumber = players.length > 0 ? Math.max(...players.map(p => p.number)) : 0;
+        const playersOnField = players.filter(p => p.isOnField).length;
+
+        // Posición inicial basada en cuántos jugadores hay en el campo
+        // Distribuir en una cuadrícula simple
+        const col = playersOnField % 4;
+        const row = Math.floor(playersOnField / 4);
+        const startX = 25 + (col * 15); // 25%, 40%, 55%, 70%
+        const startY = 30 + (row * 20); // 30%, 50%, 70%
+
+        state.addPlayer({
+          id: Math.random().toString(36).substring(2, 11),
+          name: `Jugador ${players.length + 1}`,
+          number: maxNumber + 1,
+          role: 'MID',
+          position: { x: startX, y: startY },
+          color: '#3b82f6',
+          isOnField: true, // Ahora aparece directamente en el campo
+        });
+      });
+
+      // Suscribirse a cambios
+      state.subscribe(() => {
+        renderPlayersList();
+      });
+
+      // Render inicial
+      renderPlayersList();
+    }); // Fin del forEach de wrappers
+  }
+
+  // Inicializar
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRosterPanel);
+  } else {
+    initRosterPanel();
+  }
+</script>
