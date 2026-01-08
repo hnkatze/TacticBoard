@@ -89,6 +89,13 @@ export class PlayerManager {
     ctx.font = `${radius * 0.5}px system-ui, sans-serif`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.fillText(player.role, x, y + radius + 12);
+
+    // Nombre del jugador (debajo del rol)
+    ctx.font = `bold ${radius * 0.45}px system-ui, sans-serif`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    // Truncar nombre si es muy largo
+    const displayName = player.name.length > 10 ? player.name.slice(0, 9) + '…' : player.name;
+    ctx.fillText(displayName, x, y + radius + 26);
   }
 
   // Detectar si un punto toca un jugador

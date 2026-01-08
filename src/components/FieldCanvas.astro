@@ -189,6 +189,43 @@
       };
     }
 
+    // Función para calcular distancia de un punto a un segmento de línea
+    function pointToLineDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+      const A = px - x1;
+      const B = py - y1;
+      const C = x2 - x1;
+      const D = y2 - y1;
+
+      const dot = A * C + B * D;
+      const lenSq = C * C + D * D;
+      let param = lenSq !== 0 ? dot / lenSq : -1;
+
+      let xx, yy;
+      if (param < 0) { xx = x1; yy = y1; }
+      else if (param > 1) { xx = x2; yy = y2; }
+      else { xx = x1 + param * C; yy = y1 + param * D; }
+
+      return Math.hypot(px - xx, py - yy);
+    }
+
+    // Función para encontrar el dibujo más cercano al clic
+    function findDrawingAtPoint(clickX: number, clickY: number): string | null {
+      const drawings = state.get().currentFormation.drawings;
+      const threshold = 15; // píxeles de tolerancia
+
+      for (const drawing of drawings) {
+        for (let i = 0; i < drawing.points.length - 1; i++) {
+          const p1 = percentToPixel(drawing.points[i]);
+          const p2 = percentToPixel(drawing.points[i + 1]);
+          const distance = pointToLineDistance(clickX, clickY, p1.x, p1.y, p2.x, p2.y);
+          if (distance <= threshold) {
+            return drawing.id;
+          }
+        }
+      }
+      return null;
+    }
+
     // Manejador de interacciones
     const touchHandler = new TouchHandler(interactionCanvas, {
       onStart: (data) => {
@@ -215,10 +252,11 @@
           currentDrawingPoints = [pixelToPercent(data.x, data.y)];
           state.setIsDrawing(true);
         } else if (tool === 'eraser') {
-          // Buscar y eliminar dibujo cercano
-          // Por ahora, solo limpiar todo al hacer clic
-          const formations = state.get().currentFormation.drawings;
-          // Implementar lógica de borrado individual si se necesita
+          // Buscar y eliminar dibujo cercano al clic
+          const drawingId = findDrawingAtPoint(data.x, data.y);
+          if (drawingId) {
+            state.removeDrawing(drawingId);
+          }
         }
 
         renderInteractionLayer();
@@ -325,6 +363,48 @@
 
     window.addEventListener('clear-drawings', () => {
       state.clearDrawings();
+    });
+
+    // Función para exportar canvas como imagen
+    function exportCanvasAsImage(): void {
+      if (!bgCanvas || !interactionCanvas) return;
+
+      // Crear canvas temporal
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = bgCanvas.width;
+      tempCanvas.height = bgCanvas.height;
+      const ctx = tempCanvas.getContext('2d');
+
+      if (!ctx) return;
+
+      // Combinar capas (fondo + interacción)
+      ctx.drawImage(bgCanvas, 0, 0);
+      ctx.drawImage(interactionCanvas, 0, 0);
+
+      // Descargar como PNG
+      tempCanvas.toBlob((blob) => {
+        if (!blob) return;
+
+        const formationName = state.get().currentFormation.name || 'tablero-tactico';
+        const filename = `${formationName.replace(/\s+/g, '-').toLowerCase()}.png`;
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/png', 1.0);
+    }
+
+    // Exponer función globalmente para el botón
+    (window as any).exportCanvasAsImage = exportCanvasAsImage;
+
+    // Escuchar evento de exportar
+    window.addEventListener('export-canvas', () => {
+      exportCanvasAsImage();
     });
 
     // Inicialización
