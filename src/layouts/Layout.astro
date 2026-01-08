@@ -3,19 +3,61 @@ import '../styles/global.css';
 
 interface Props {
   title?: string;
+  description?: string;
 }
 
-const { title = 'Tablero Táctico' } = Astro.props;
+const {
+  title = 'TacticBoard - Tablero Táctico Fútbol 8',
+  description = 'Tablero táctico interactivo para entrenadores de fútbol 8. Crea formaciones, dibuja jugadas, gestiona tu roster y exporta imágenes de alta calidad.'
+} = Astro.props;
+
+const siteUrl = 'https://tacticboard.camilohenriquez.com';
+const ogImage = `${siteUrl}/Jugadores.jpg`;
 ---
 <!doctype html>
 <html lang="es">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
+
+		<!-- Favicon -->
+		<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/juego.png" />
+
+		<!-- SEO Básico -->
+		<meta name="description" content={description} />
+		<meta name="keywords" content="fútbol 8, tablero táctico, formaciones, entrenador, pizarra táctica, soccer tactics, futsal" />
+		<meta name="author" content="hnkatze" />
+		<meta name="robots" content="index, follow" />
+		<link rel="canonical" href={siteUrl} />
+
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content={siteUrl} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:image" content={ogImage} />
+		<meta property="og:locale" content="es_ES" />
+		<meta property="og:site_name" content="TacticBoard" />
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:url" content={siteUrl} />
+		<meta name="twitter:title" content={title} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={ogImage} />
+
+		<!-- PWA -->
+		<meta name="theme-color" content="#e94560" />
+		<link rel="manifest" href="/manifest.json" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="TacticBoard" />
 		<meta name="mobile-web-app-capable" content="yes" />
+
+		<!-- Generator -->
+		<meta name="generator" content={Astro.generator} />
+
 		<title>{title}</title>
 	</head>
 	<body>

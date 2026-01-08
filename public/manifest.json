@@ -1,0 +1,28 @@
+{
+  "name": "TacticBoard - Tablero Táctico Fútbol 8",
+  "short_name": "TacticBoard",
+  "description": "Tablero táctico interactivo para entrenadores de fútbol 8. Crea formaciones y dibuja jugadas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#e94560",
+  "orientation": "landscape",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/juego.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "utilities"],
+  "screenshots": [
+    {
+      "src": "/Jugadores.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "label": "TacticBoard - El equipo"
+    }
+  ]
+}

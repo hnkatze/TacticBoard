@@ -8,8 +8,17 @@ import RosterPanel from '../components/RosterPanel.astro';
 	<main class="main-container">
 		<!-- Panel izquierdo: Roster -->
 		<aside id="roster-panel" class="side-panel left-panel">
-			<RosterPanel />
+			<div class="panel-content">
+				<RosterPanel />
+			</div>
 		</aside>
+
+		<!-- Toggle flotante izquierdo -->
+		<button class="panel-toggle left-toggle" data-panel="roster" title="Colapsar panel (R)">
+			<svg class="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+			</svg>
+		</button>
 
 		<!-- Área principal: Campo -->
 		<section class="center-section">
@@ -33,8 +42,16 @@ import RosterPanel from '../components/RosterPanel.astro';
 			</nav>
 		</section>
 
+		<!-- Toggle flotante derecho -->
+		<button class="panel-toggle right-toggle" data-panel="tools" title="Colapsar panel (T)">
+			<svg class="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+			</svg>
+		</button>
+
 		<!-- Panel derecho: Herramientas y Formaciones -->
 		<aside id="tools-panel" class="side-panel right-panel">
+			<div class="panel-content">
 			<h2 class="panel-title">Herramientas</h2>
 
 			<!-- Herramientas de dibujo -->
@@ -85,8 +102,15 @@ import RosterPanel from '../components/RosterPanel.astro';
 				<button id="save-formation" class="action-btn primary">Guardar</button>
 				<button id="new-formation" class="action-btn secondary">Nueva</button>
 			</div>
+			<button id="export-image" class="action-btn export-btn">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+				</svg>
+				Exportar Imagen
+			</button>
 			<div id="formations-list" class="formations-list">
 				<!-- Lista de formaciones guardadas -->
+			</div>
 			</div>
 		</aside>
 
@@ -129,6 +153,8 @@ import RosterPanel from '../components/RosterPanel.astro';
 		background-color: #ffffff;
 		padding: 20px;
 		overflow: auto;
+		position: relative;
+		transition: width 0.3s ease, padding 0.3s ease;
 	}
 
 	@media (min-width: 1024px) {
@@ -139,12 +165,108 @@ import RosterPanel from '../components/RosterPanel.astro';
 			box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
 		}
 
+		.side-panel.collapsed {
+			width: 48px;
+			padding: 12px 8px;
+			overflow: hidden;
+		}
+
+		.side-panel.collapsed .panel-content {
+			opacity: 0;
+			visibility: hidden;
+			pointer-events: none;
+		}
+
 		.left-panel {
 			border-right: 1px solid #e2e8f0;
 		}
 
 		.right-panel {
 			border-left: 1px solid #e2e8f0;
+		}
+	}
+
+	/* Panel content wrapper */
+	.panel-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: auto;
+		transition: opacity 0.2s ease, visibility 0.2s ease;
+	}
+
+	/* Toggle button - Floating outside panel */
+	.panel-toggle {
+		display: none;
+		position: fixed;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 24px;
+		height: 64px;
+		background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+		border: 1px solid #e2e8f0;
+		cursor: pointer;
+		z-index: 50;
+		padding: 0;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	.panel-toggle:hover {
+		background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+		border-color: #e94560;
+		box-shadow: 0 6px 16px rgba(233, 69, 96, 0.15);
+	}
+
+	.panel-toggle:hover .toggle-icon {
+		color: #e94560;
+	}
+
+	.panel-toggle:active {
+		transform: translateY(-50%) scale(0.95);
+	}
+
+	.left-toggle {
+		left: 300px;
+		border-radius: 0 8px 8px 0;
+		border-left: none;
+		transition: left 0.3s ease;
+	}
+
+	.left-toggle.collapsed {
+		left: 48px;
+	}
+
+	.right-toggle {
+		right: 300px;
+		border-radius: 8px 0 0 8px;
+		border-right: none;
+		transition: right 0.3s ease;
+	}
+
+	.right-toggle.collapsed {
+		right: 48px;
+	}
+
+	.toggle-icon {
+		width: 14px;
+		height: 14px;
+		color: #94a3b8;
+		transition: transform 0.3s ease, color 0.2s ease;
+	}
+
+	.left-toggle.collapsed .toggle-icon {
+		transform: rotate(180deg);
+	}
+
+	.right-toggle.collapsed .toggle-icon {
+		transform: rotate(180deg);
+	}
+
+	@media (min-width: 1024px) {
+		.panel-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
 		}
 	}
 
@@ -382,6 +504,29 @@ import RosterPanel from '../components/RosterPanel.astro';
 		border-color: #cbd5e1;
 	}
 
+	/* Export button */
+	.action-btn.export-btn {
+		width: 100%;
+		margin-top: 12px;
+		background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+		color: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+	}
+
+	.action-btn.export-btn:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+	}
+
+	.action-btn.export-btn svg {
+		width: 18px;
+		height: 18px;
+	}
+
 	/* Formations list */
 	.formations-list {
 		flex: 1;
@@ -471,6 +616,120 @@ import RosterPanel from '../components/RosterPanel.astro';
 		state.setSavedFormations(savedFormations);
 		updateFormationsList();
 
+		// ========== PANELES COLAPSABLES ==========
+		const rosterPanel = document.getElementById('roster-panel');
+		const toolsPanel = document.getElementById('tools-panel');
+		const leftToggle = document.querySelector('.left-toggle') as HTMLElement;
+		const rightToggle = document.querySelector('.right-toggle') as HTMLElement;
+		const panelToggles = document.querySelectorAll('.panel-toggle');
+
+		// Cargar estado guardado de paneles
+		const savedPanelState = localStorage.getItem('tacticboard-panels');
+		if (savedPanelState) {
+			const panelState = JSON.parse(savedPanelState);
+			if (panelState.roster) {
+				rosterPanel?.classList.add('collapsed');
+				leftToggle?.classList.add('collapsed');
+			}
+			if (panelState.tools) {
+				toolsPanel?.classList.add('collapsed');
+				rightToggle?.classList.add('collapsed');
+			}
+		}
+
+		// Toggle de paneles
+		panelToggles.forEach(toggle => {
+			toggle.addEventListener('click', () => {
+				const panelName = toggle.getAttribute('data-panel');
+				const panel = panelName === 'roster' ? rosterPanel : toolsPanel;
+				if (panel) {
+					panel.classList.toggle('collapsed');
+					toggle.classList.toggle('collapsed');
+					savePanelState();
+				}
+			});
+		});
+
+		function savePanelState() {
+			const panelState = {
+				roster: rosterPanel?.classList.contains('collapsed') || false,
+				tools: toolsPanel?.classList.contains('collapsed') || false
+			};
+			localStorage.setItem('tacticboard-panels', JSON.stringify(panelState));
+		}
+
+		// ========== KEYBOARD SHORTCUTS ==========
+		document.addEventListener('keydown', (e) => {
+			// Ignorar si estamos en un input
+			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+			const key = e.key.toLowerCase();
+
+			// Atajos de herramientas
+			switch(key) {
+				case 's':
+					if (!e.ctrlKey && !e.metaKey) {
+						selectTool('select');
+					}
+					break;
+				case 'a':
+					selectTool('arrow');
+					break;
+				case 'd':
+					selectTool('dashed');
+					break;
+				case 'e':
+					if (!e.ctrlKey && !e.metaKey) {
+						selectTool('eraser');
+					}
+					break;
+				case 'escape':
+					state.selectPlayer(null);
+					break;
+				case 'r':
+					// Toggle panel roster
+					if (!e.ctrlKey && !e.metaKey) {
+						rosterPanel?.classList.toggle('collapsed');
+						leftToggle?.classList.toggle('collapsed');
+						savePanelState();
+					}
+					break;
+				case 't':
+					// Toggle panel tools
+					if (!e.ctrlKey && !e.metaKey) {
+						toolsPanel?.classList.toggle('collapsed');
+						rightToggle?.classList.toggle('collapsed');
+						savePanelState();
+					}
+					break;
+			}
+
+			// Ctrl+S - Guardar
+			if ((e.ctrlKey || e.metaKey) && key === 's') {
+				e.preventDefault();
+				document.getElementById('save-formation')?.click();
+			}
+
+			// Ctrl+E - Exportar
+			if ((e.ctrlKey || e.metaKey) && key === 'e') {
+				e.preventDefault();
+				document.getElementById('export-image')?.click();
+			}
+		});
+
+		function selectTool(tool: string) {
+			const toolBtns = document.querySelectorAll('.tool-btn');
+			toolBtns.forEach(b => {
+				b.classList.remove('active');
+				b.classList.remove('bg-[#e94560]');
+			});
+			const targetBtn = document.querySelector(`[data-tool="${tool}"]`);
+			if (targetBtn) {
+				targetBtn.classList.add('active');
+			}
+			window.dispatchEvent(new CustomEvent('tool-change', { detail: { tool } }));
+		}
+
 		// Toggle roster en móvil
 		const toggleRosterBtn = document.getElementById('toggle-roster-btn');
 		const closeRosterBtn = document.getElementById('close-roster-btn');
@@ -545,6 +804,11 @@ import RosterPanel from '../components/RosterPanel.astro';
 				state.newFormation();
 				updateFormationName();
 			}
+		});
+
+		// Exportar imagen
+		document.getElementById('export-image')?.addEventListener('click', () => {
+			window.dispatchEvent(new CustomEvent('export-canvas'));
 		});
 
 		// Suscribirse a cambios de estado

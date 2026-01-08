@@ -1,0 +1,6 @@
+# TacticBoard - robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://tacticboard.camilohenriquez.com/sitemap.xml
